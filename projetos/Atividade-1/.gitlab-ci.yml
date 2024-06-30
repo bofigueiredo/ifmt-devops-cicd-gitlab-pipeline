@@ -1,0 +1,21 @@
+image: docker:24.0.5
+
+services:
+  - name: "docker:24.0.5-dind"
+    alias: docker
+    entrypoint: ["dockerd-entrypoint.sh", "--tls=false", "--host=tcp://0.0.0.0:2375"]
+
+
+variables:
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_HUB_IMAGE: "pipeline-dockerhub"
+
+build-job:
+  stage: build
+  script:
+    - echo "REALIZANDO LOGIN"
+    - echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+    - echo "REALIZANDO BUILD"
+    - docker build -t $DOCKER_HUB_USERNAME/$DOCKER_HUB_IMAGE:latest .
+    - echo "REALIZANDO PUSH"
+    - docker push $DOCKER_HUB_USERNAME/$DOCKER_HUB_IMAGE:latest

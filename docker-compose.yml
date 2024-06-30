@@ -1,0 +1,44 @@
+services:
+  gitlab:
+    image: 'gitlab/gitlab-ce:17.0.2-ce.0'
+    container_name: gitlab
+    restart: always
+    hostname: 'gitlab'
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab'
+    ports:
+      - "80:80"
+    volumes:
+      - cicd-gitlab-config:/etc/gitlab
+      - cicd-gitlab-logs:/var/log/gitlab
+      - cicd-gitlab-data:/var/opt/gitlab
+    networks:
+      - cicd-gitlab-network
+         
+
+  gitlab-runner:
+    image: 'gitlab/gitlab-runner:ubuntu-v17.0.0'
+    container_name: gitlab-runner
+    restart: always
+    hostname: gitlab-runner
+    volumes:
+      - cicd-runner-config:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - cicd-gitlab-network
+
+volumes:
+  cicd-gitlab-config:
+    external: true
+  cicd-gitlab-logs:
+    external: true
+  cicd-gitlab-data:
+    external: true
+  cicd-runner-config:
+    external: true
+
+networks:
+  cicd-gitlab-network:
+    external: true
+

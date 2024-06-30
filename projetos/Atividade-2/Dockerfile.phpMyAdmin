@@ -1,0 +1,8 @@
+FROM phpmyadmin:5.2.1-apache
+
+ENV PMA_HOST=mysql 
+ENV PMA_PORT=3306  
+ENV PMA_USER=ifmt 
+ENV PMA_PASSWORD=ifmt
+
+EXPOSE 80

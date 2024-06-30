@@ -1,0 +1,65 @@
+# Define de maneira global a image base docker utilizando o docker dind como serviço 
+image: docker:latest
+services:
+  - name: "docker:24.0.5-dind"
+    entrypoint: ["dockerd-entrypoint.sh", "--tls=false", "--host=tcp://0.0.0.0:2375"]
+
+variables:
+  DOCKER_TLS_CERTDIR: ""
+  DB_IMAGE: "db-ifmt"
+  DB_ADMIN_IMAGE: "dbadmin-ifmt"
+  DB_NETWORK: "db-network"
+
+# Define dois estágios de execução e sua ordem
+stages:
+  - build
+  - run
+
+# Cria um job de para buildar o banco de dados no stage build
+build-db-job:
+  stage: build
+  script:
+    # Logamos no docker hub par afazer o push da imagem
+    - echo "LOGIN NO DOCKER HUB *******************************************"
+    - echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+    # Buildamos a imagem
+    - echo "BUILD DO DB *******************************************"
+    - docker build -f Dockerfile.mysql -t $DOCKER_HUB_USERNAME/$DB_IMAGE:latest .
+    # Enviamos para o docker hub
+    - echo "PUSH PARA O DOCKER HUB *******************************************"
+    - docker push $DOCKER_HUB_USERNAME/$DB_IMAGE:latest
+    # Apenas ilustrativo, para exibir a imagem gerada
+    - docker images
+
+#cria um job de para buildar o phpMyAdmin ainda no stage build
+build-dbadmin-job:
+  stage: build
+  script:
+    # Logamos no docker hub par afazer o push da imagem
+    - echo "LOGIN NO DOCKER HUB *******************************************"
+    - echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+    # Buildamos a imagem
+    - echo "BUILD DO DBADMIN *******************************************"
+    - docker build -f Dockerfile.phpMyAdmin -t $DOCKER_HUB_USERNAME/$DB_ADMIN_IMAGE:latest . 
+    # Enviamos para o docker hub
+    - echo "PUSH PARA O DOCKER HUB *******************************************"
+    - docker push $DOCKER_HUB_USERNAME/$DB_ADMIN_IMAGE:latest
+    # Apenas ilustrativo, para exibir a imagem gerada
+    - docker images
+
+# Apos o stage build inicia o stage run responsável pelo deploy
+run-job:
+  # substitui a imagem global docker pela imagem do ubuntu, normalmente utilizariamos uma imagem mais simples e enxuta, mas a ideia aqui era só demonstrar mesmo
+  image: ubuntu:latest
+  stage: run
+  script:
+    # Atualizamos o repositorio do ubuntu
+    - apt-get update
+    # Instalamos as dependencias necessárias para fazer o deploy
+    # sshpass utilizando para passar a senha para o client do ssh
+    # ssh client para conectar no host em que sera realizado o deploy
+    - apt-get install -y openssh-client sshpass
+    # Atribui permissão de execucao para o arquivo deploy
+    - chmod +x deploy.sh
+    # Arquivo que irá conecatar na maquina via ssh e executar os comandos docker para rodar as imagens que serão baixadas via docker hub
+    - ./deploy.sh
