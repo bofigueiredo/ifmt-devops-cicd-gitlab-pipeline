@@ -1,0 +1,111 @@
+variables:
+  DOCKER_TLS_CERTDIR: ""
+
+  POSTGRES_DB: pessoa
+  POSTGRES_USER: pessoa
+  POSTGRES_PASSWORD: pessoa
+  
+  DB_IMAGE: "cicd-db-ifmt"
+  DB_ADMIN_IMAGE: "cicd-dbadmin-ifmt"
+  BACKEND_IMAGE: "cicd-backend-ifmt"
+  FRONTEND_IMAGE: "cicd-frontend-ifmt"
+  PROJETCT_NETWORK: "cicd-project-network"
+
+stages:
+  # Buildamos o projeto Java (backend) 
+  - project-build
+  # Geramos as imagens dos containers de back e front e enviamos para o docker hub
+  - image-build
+  # Realizamos o deploy do back e front
+  - deploy
+
+.template-docker-dind:
+  image: docker:24.0.5
+  services:
+    - name: "docker:24.0.5-dind"
+  stage: image-build
+  before_script:
+    # Autenticamos no docker-hub
+    - echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+  after_script:
+    # Deslogamos
+    - docker logout
+    # Apenas ilustrativo, para exibir a imagem gerada
+    - docker images
+
+
+backend-project-build:
+  image: maven:3.9.5-eclipse-temurin-17-alpine
+  stage: project-build
+  before_script:
+    - ls backend/
+  script: 
+    - cd backend
+    - mvn package
+  after_script:
+    - ls backend/target/
+  artifacts:
+    expire_in: 2 day
+    paths: 
+      - backend/target/*.jar
+
+
+backend-image-build:
+  extends: .template-docker-dind
+  script:
+    - ls backend/target/
+    - docker info | grep Storage
+    # Navegamos para o diretorio backend
+    - cd backend
+    # Buildamos a imagem
+    - docker build -t $DOCKER_HUB_USERNAME/$BACKEND_IMAGE:latest .
+    # Enviamos para o docker hub
+    - docker push $DOCKER_HUB_USERNAME/$BACKEND_IMAGE:latest
+
+
+frontend-image-build:
+  extends: .template-docker-dind
+  script:
+    # Navegamos para o diretorio frontend
+    - cd frontend
+    # Buildamos a imagem
+    - docker build -t $DOCKER_HUB_USERNAME/$FRONTEND_IMAGE:latest .
+    # Enviamos para o docker hub
+    - docker push $DOCKER_HUB_USERNAME/$FRONTEND_IMAGE:latest
+
+postgresql-image-build:
+  extends: .template-docker-dind
+  script:
+    # Navegamos para o diretorio database
+    - cd database
+    # Buildamos a imagem
+    - docker build -f ./Dockerfile.postgreSQL -t $DOCKER_HUB_USERNAME/$DB_IMAGE:latest .
+    # Enviamos para o docker hub
+    - docker push $DOCKER_HUB_USERNAME/$DB_IMAGE:latest
+
+
+adminer-image-build:
+  extends: .template-docker-dind
+  script:
+    # Buildamos a imagem
+    - docker build -f ./database-admin/Dockerfile.adminer -t $DOCKER_HUB_USERNAME/$DB_ADMIN_IMAGE:latest .
+    # Enviamos para o docker hub
+    - docker push $DOCKER_HUB_USERNAME/$DB_ADMIN_IMAGE:latest
+
+
+project-deploy:
+  image: ubuntu:latest
+  stage: deploy
+  script:
+    - ls backend/target/
+    - echo "*********************** project-deploy JOB ************************"	
+    # Atualizamos o repositorio do ubuntu
+    - apt-get update
+    # Instalamos as dependencias necessárias para fazer o deploy
+    # sshpass utilizando para passar a senha para o client do ssh
+    # ssh client para conectar no host em que sera realizado o deploy
+    - apt-get install -y openssh-client sshpass
+    # Atribui permissão de execucao para o arquivo deploy
+    - chmod +x deploy.sh
+    # Arquivo que irá conecatar na maquina via ssh e executar os comandos docker para rodar as imagens que serão baixadas via docker hub
+    - ./deploy.sh

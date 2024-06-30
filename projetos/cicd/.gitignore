@@ -1,0 +1,35 @@
+# Ignorar arquivos e pastas no backend
+/backend/target/
+/backend/.settings/
+/backend/.classpath
+/backend/.project
+/backend/.idea/
+/backend/*.iml
+/backend/*.log
+/backend/*.DS_Store
+
+# Ignorar arquivos e pastas no frontend
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.angular/cache/
+/frontend/*.log
+/frontend/.DS_Store
+/frontend/.env
+
+# Ignorar arquivos e pastas gerais
+**/.DS_Store
+**/Thumbs.db
+**/*.swp
+**/*.swo
+**/*.bak
+**/*.tmp
+**/*.log
+
+# Ignorar configurações de ambiente IDEs
+/.idea/
+/.vscode/
+/*.iml
+
+# Ignorar arquivos de sistema
+.DS_Store
+Thumbs.db

@@ -1,0 +1,30 @@
+services:
+  postgresql:
+    build:
+      context: ./database
+      dockerfile: Dockerfile.postgreSQL
+    environment:
+      POSTGRES_DB: pessoa
+      POSTGRES_USER: pessoa
+      POSTGRES_PASSWORD: pessoa
+    volumes:
+      - cicd-postgresql-data:/var/lib/postgresql/data
+    networks:
+      - cicd-project-network
+
+  adminer:
+    build:
+      context: ./database-admin
+      dockerfile: Dockerfile.adminer
+    ports:
+      - "8083:8080"
+    networks:
+      - cicd-project-network
+
+networks:
+  cicd-project-network:
+    external: true
+
+volumes:
+  cicd-postgresql-data:
+    external: true
